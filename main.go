@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"xva-validate/xva"
+
+	"github.com/emilienthomas/xva-validate/xva"
 )
 
 // Tests integrity of the xva file passed through --xva parameter.

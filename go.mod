@@ -1,1 +1,1 @@
-module xva-validate
+module github.com/emilienthomas/xva-validate
