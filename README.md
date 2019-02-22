@@ -1,5 +1,7 @@
 # xva-validate
 
+[![Build Status](https://api.cirrus-ci.com/github/emilienthomas/xva-validate.svg)](https://cirrus-ci.com/github/emilienthomas/xva-validate)
+
 This is a command-line tool that performs verifications on a xva file to control integrity.
 You can also use the Validate function inside of your own Go application or tool.
 
