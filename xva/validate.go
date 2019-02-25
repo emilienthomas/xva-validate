@@ -27,27 +27,27 @@ var (
 
 // Tests integrity of the xva file.
 // When verbosity >= 2, outputs each validation performed.
-func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
+func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue string, err error) {
 
 	// Ensure file exists
 	f, err := os.OpenFile(xvaFileName, os.O_RDONLY, 0755)
 	if err != nil {
-		return false, err
+		return false, "", err
 	}
 	defer f.Close()
 
 	if f == nil {
-		return false, errors.New(fmt.Sprintf("Invalid file: %s", xvaFileName))
+		return false, "", errors.New(fmt.Sprintf("Invalid file: %s", xvaFileName))
 	}
 
 	bufferedReader := bufio.NewReader(f)
 	if bufferedReader == nil {
-		return false, errors.New(fmt.Sprintf("Unable to create buffered reader for %s", xvaFileName))
+		return false, "", errors.New(fmt.Sprintf("Unable to create buffered reader for %s", xvaFileName))
 	}
 
 	tarReader := tar.NewReader(bufferedReader)
 	if tarReader == nil {
-		return false, errors.New(fmt.Sprintf("Unable to open %s as tar", xvaFileName))
+		return false, "", errors.New(fmt.Sprintf("Unable to open %s as tar", xvaFileName))
 	}
 
 	sums := make(map[string]string)
@@ -70,7 +70,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 		}
 		// Otherwise return current error
 		if err != nil {
-			return false, err
+			return false, "", err
 		}
 
 		if header.Typeflag == tar.TypeReg {
@@ -82,7 +82,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 
 				_, err = io.ReadFull(tarReader, checksumFromFile)
 				if err != nil {
-					return false, err
+					return false, "", err
 				}
 				base64sum := string(checksumFromFile)
 
@@ -93,7 +93,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 				} else {
 					// Checksum comes second, compare it with value in map
 					if sums[blockName] == base64sum {
-						return false, errors.New(fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", blockName, base64sum, sums[blockName]))
+						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", blockName, base64sum, sums[blockName]), nil
 					} else if verbosity >= 2 {
 						log.Printf("Checksum valid for %s : %s", blockName, base64sum)
 					}
@@ -106,7 +106,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 
 				_, err = io.ReadFull(tarReader, fileContent)
 				if err != nil {
-					return false, err
+					return false, "", err
 				}
 
 				fileSum := sha1.Sum(fileContent)
@@ -118,7 +118,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 				} else {
 					// Data file comes second, compare to sum in map
 					if sums[header.Name] == fileSumAsBase64 {
-						return false, errors.New(fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", header.Name, sums[header.Name], fileSumAsBase64))
+						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", header.Name, sums[header.Name], fileSumAsBase64), nil
 					} else if verbosity >= 2 {
 						log.Printf("Checksum valid for %s : %s", header.Name, fileSumAsBase64)
 					}
@@ -137,8 +137,8 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, err error) {
 			remains[i] = blockName
 			i++
 		}
-		return false, errors.New(fmt.Sprintf("Missing checksums or data blocks: %s", remains))
+		return false, fmt.Sprintf("Missing checksums or data blocks: %s", remains), nil
 	}
 
-	return true, nil
+	return true, "", nil
 }

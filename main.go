@@ -20,13 +20,13 @@ func main() {
 	verbosityPtr := flag.Uint("v", 0, "Verbosity level")
 	flag.Parse()
 
-	isValid, err := xva.Validate(*xvaPtr, *verbosityPtr)
+	isValid, validationIssue, err := xva.Validate(*xvaPtr, *verbosityPtr)
 	if err != nil {
 		log.Println(fmt.Errorf("%v", err))
 		os.Exit(2)
 	}
 	if !isValid {
-		log.Println("xva file is invalid")
+		log.Println(fmt.Sprintf("xva file is invalid, reason: %s", validationIssue))
 		os.Exit(1)
 	} else {
 		if *verbosityPtr >= 1 {
