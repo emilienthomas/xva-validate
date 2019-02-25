@@ -13,3 +13,6 @@
 
 # GoLand directory
 .idea
+
+# goreleaser output directory
+dist
