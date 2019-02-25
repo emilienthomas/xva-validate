@@ -25,8 +25,10 @@ These arguments is printed by the flag -h
 ```sh
 $ ./xva-validate -h
 Usage of xva-validate:
-  -v uint
+  -verbose uint
         Verbosity level
+  -version
+        Print version and exit
   -xva string
         xva file (default "backup.xva")
 ```
