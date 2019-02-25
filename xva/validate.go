@@ -5,7 +5,7 @@ import (
 	"archive/tar"
 	"bufio"
 	"crypto/sha1"
-	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -58,19 +58,10 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue
 		log.Println("Iterating on file content")
 	}
 
-	for {
-		header, err := tarReader.Next()
-
-		// When err is EOF, tar file is finished
-		if err == io.EOF {
-			if verbosity >= 2 {
-				log.Println("EOF")
-			}
-			break
-		}
-		// Otherwise return current error
-		if err != nil {
-			return false, "", err
+	// When err is EOF, tar file is finished
+	for header, err := tarReader.Next(); err == nil; header, err = tarReader.Next() {
+		if verbosity >= 2 {
+			log.Printf("Found %s", header.Name)
 		}
 
 		if header.Typeflag == tar.TypeReg {
@@ -78,24 +69,29 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue
 
 			if regexpChecksum.MatchString(header.Name) {
 				// Checksum file
+				if verbosity >= 3 {
+					log.Println("It is a checksum file")
+				}
 				blockName := strings.Replace(header.Name, ".checksum", "", -1)
 
 				_, err = io.ReadFull(tarReader, checksumFromFile)
 				if err != nil {
 					return false, "", err
 				}
-				base64sum := string(checksumFromFile)
+				hexSumFromFile := string(checksumFromFile)
 
-				// Successfully read checksum in xva file
 				if len(sums[blockName]) == 0 {
 					// Checksum comes first, put it in map
-					sums[blockName] = base64sum
+					sums[blockName] = hexSumFromFile
 				} else {
 					// Checksum comes second, compare it with value in map
-					if sums[blockName] == base64sum {
-						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", blockName, base64sum, sums[blockName]), nil
+					if sums[blockName] != hexSumFromFile {
+						if verbosity >= 2 {
+							log.Printf("Invalid checksum for %s: expected %s, got %s", blockName, hexSumFromFile, sums[blockName])
+						}
+						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", blockName, hexSumFromFile, sums[blockName]), nil
 					} else if verbosity >= 2 {
-						log.Printf("Checksum valid for %s : %s", blockName, base64sum)
+						log.Printf("Checksum valid for %s : %s", blockName, hexSumFromFile)
 					}
 					// Remove entry from map
 					delete(sums, blockName)
@@ -103,30 +99,42 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue
 
 			} else if regexpBlock.MatchString(header.Name) {
 				// Block file
-
-				_, err = io.ReadFull(tarReader, fileContent)
-				if err != nil {
+				if verbosity >= 3 {
+					log.Println("It is a block file")
+				}
+				i, err := tarReader.Read(fileContent)
+				if err != nil && err != io.EOF {
 					return false, "", err
 				}
-
-				fileSum := sha1.Sum(fileContent)
-				fileSumAsBase64 := base64.StdEncoding.EncodeToString(fileSum[:])
+				fileSum := sha1.Sum(fileContent[:i])
+				fileSumAsHex := hex.EncodeToString(fileSum[:])
 
 				if len(sums[header.Name]) == 0 {
 					// Data file comes first, put sum in map
-					sums[header.Name] = fileSumAsBase64
+					sums[header.Name] = fileSumAsHex
 				} else {
 					// Data file comes second, compare to sum in map
-					if sums[header.Name] == fileSumAsBase64 {
-						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", header.Name, sums[header.Name], fileSumAsBase64), nil
+					if sums[header.Name] != fileSumAsHex {
+						if verbosity >= 2 {
+							log.Printf("Invalid checksum for %s: expected %s, got %s", header.Name, sums[header.Name], fileSumAsHex)
+						}
+						return false, fmt.Sprintf("Invalid checksum for %s: expected %s, got %s", header.Name, sums[header.Name], fileSumAsHex), nil
 					} else if verbosity >= 2 {
-						log.Printf("Checksum valid for %s : %s", header.Name, fileSumAsBase64)
+						log.Printf("Checksum valid for %s : %s", header.Name, fileSumAsHex)
 					}
 					// Remove entry from map
 					delete(sums, header.Name)
 				}
 			}
 		}
+	}
+	if verbosity >= 2 {
+		log.Println("Finished iterating")
+	}
+
+	// Loop exited, if not on EOF then return error
+	if err != nil && err != io.EOF {
+		return false, "", err
 	}
 
 	// When the whole xva file has been iterated over, no entry should remain in sums.

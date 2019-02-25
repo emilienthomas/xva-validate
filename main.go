@@ -35,7 +35,7 @@ func main() {
 
 	isValid, validationIssue, err := xva.Validate(*xvaPtr, *verbosityPtr)
 	if err != nil {
-		log.Println(fmt.Errorf("%v", err))
+		log.Println(fmt.Sprintf("error occured: %v", err))
 		os.Exit(2)
 	}
 	if !isValid {
