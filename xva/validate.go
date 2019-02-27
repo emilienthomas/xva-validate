@@ -51,7 +51,7 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue
 	}
 
 	sums := make(map[string]string)
-	fileContent := make([]byte, 1048576) // Build a 1MB array
+	fileContent := make([]byte, 1048576) // Build a 1MB array, since vm disks are store in 1MB chunks
 	checksumFromFile := make([]byte, 40)
 
 	if verbosity >= 2 {
@@ -102,11 +102,15 @@ func Validate(xvaFileName string, verbosity uint) (isValid bool, validationIssue
 				if verbosity >= 3 {
 					log.Println("It is a block file")
 				}
-				i, err := tarReader.Read(fileContent)
-				if err != nil && err != io.EOF {
+				// Read the complete file into fileContent
+				for i, j := 0, 0; err == nil; {
+					j, err = tarReader.Read(fileContent[i:header.Size])
+					i = i + j
+				}
+				if err != io.EOF {
 					return false, "", err
 				}
-				fileSum := sha1.Sum(fileContent[:i])
+				fileSum := sha1.Sum(fileContent[:header.Size])
 				fileSumAsHex := hex.EncodeToString(fileSum[:])
 
 				if len(sums[header.Name]) == 0 {

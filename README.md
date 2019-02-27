@@ -1,6 +1,6 @@
 # xva-validate
 
-[![Build Status](https://api.travis-ci.com/emilienthomas/xva-validate.svg?branch=v0.2.x)](https://travis-ci.com/emilienthomas/xva-validate)
+[![Build Status](https://api.travis-ci.com/emilienthomas/xva-validate.svg?branch=v0.2.x)](https://travis-ci.com/emilienthomas/xva-validate) [![Release](https://img.shields.io/github/release/emilienthomas/xva-validate.svg)](https://github.com/emilienthomas/xva-validate/releases)
 
 This is a command-line tool that performs verifications on a xva file to control integrity.
 You can also use the Validate function inside of your own Go application or tool.
